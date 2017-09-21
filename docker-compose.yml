@@ -41,7 +41,6 @@ services:
       driver: none
     volumes:
       - pgdata:/var/lib/postgresql/data
-
 volumes:
   pgdata:
   stage:

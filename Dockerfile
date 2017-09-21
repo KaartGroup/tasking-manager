@@ -12,6 +12,8 @@ RUN apt-get update \
 RUN mkdir /usr/src/app
 WORKDIR /usr/src/app
 
+WORKDIR /src
+
 # Add and install Python modules
 COPY requirements.txt ./
 RUN pip install -r requirements.txt
