@@ -19,7 +19,7 @@
         vm.lockedByCurrentUserVectorLayer = null;
         vm.map = null;
         vm.user = null;
-        vm.maxlengthComment = 500;
+        vm.maxlengthComment = configService.maxCommentLength;
         vm.taskUrl = '';
 
         // tab and view control
@@ -38,6 +38,8 @@
         vm.taskUnLockErrorMessage = '';
         vm.taskSplitError = false;
         vm.taskSplitCode == null;
+        vm.taskCommentError = false;
+        vm.taskCommentErrorMessage = '';
         vm.wasAutoUnlocked = false;
 
         //authorization
@@ -67,7 +69,7 @@
 
         //bound from the html
         vm.comment = '';
-        vm.usernames = [];
+        vm.suggestedUsers = [];
 
         //table sorting control
         vm.propertyName = 'username';
@@ -130,7 +132,7 @@
             autoRefresh = $interval(function () {
                 refreshProject(vm.id);
                 updateMappedTaskPerUser(vm.id);
-                //TODO do a selected task refesh too
+                //TODO do a selected task refresh too
             }, 10000);
 
             // set up the preferred editor from user preferences
@@ -195,6 +197,8 @@
             vm.taskSplitError = false;
             vm.taskSplitCode == null;
             vm.taskUndoError = false;
+            vm.taskCommentError = false;
+            vm.taskCommentErrorMessage = '';
             vm.wasAutoUnlocked = false;
         }
 
@@ -270,6 +274,23 @@
                 vm.selectInteraction.setActive(false);
                 vm.drawPolygonInteraction.setActive(true);
             }
+        };
+
+        /**
+         * Add stand-alone comment, adding it to task history.
+         */
+        vm.addStandaloneComment = function() {
+            var projectId = vm.projectData.projectId;
+            var taskId = vm.selectedTaskData.taskId;
+            var commentPromise = taskService.addTaskComment(projectId, taskId, vm.comment);
+            commentPromise.then(function (data) {
+                vm.comment = '';
+                vm.resetErrors();
+                setUpSelectedTask(data);
+            }, function (error) {
+                vm.taskCommentError = true;
+                vm.taskCommentErrorMessage = error.data.Error;
+            });
         };
 
         /**
@@ -549,7 +570,7 @@
         }
 
         /**
-         * Updates the map and contoller data for tasks locked by current user
+         * Updates the map and controller data for tasks locked by current user
          * @param projectId
          */
         function updateLockedTasksForCurrentUser(projectId) {
@@ -1317,6 +1338,7 @@
                 }
 
                 //load aerial photography if present
+                // TODO: make changeset source part of project info
                 var changesetSource = "Bing";
                 var hasImagery = false;
                 if (imageryUrl && typeof imageryUrl != "undefined" && imageryUrl !== '') {
@@ -1360,6 +1382,8 @@
                     new_layer: false
                 };  
 
+                // this is a future feature to be able to use an overpass query in lieu of the osm data
+                
                 // if (overpassQuery){
                 // editorService.sendJOSMCmd
                 //     ('http://127.0.0.1:8111/import?url=https://lz4.overpass-api.de/api/interpreter/?data=[out:xml];%20way[highway](53.2987342,-6.3870259,53.4105416,-6.1148829);%20(._;%3E;);%20out%20meta;');
@@ -1373,12 +1397,14 @@
                     editorService.sendJOSMCmd('http://127.0.0.1:8111/zoom', loadAndZoomParams);
                 }
 
-                               
-                if (vm.project_files.length > 0) {
+                
+                // if there are project files, send the josm command with the api url to extract data
+                if (vm.currentTab === 'mapping' && vm.project_files.length > 0) {
                     var i;
                     for (i = 0; i < vm.project_files.length; i++) {
                         var emptyTaskLayerParams = {
-                            new_layer: true,                       upload_policy: enumerateUploadPolicy(vm.project_files[i].uploadPolicy),
+                            new_layer: true,                       
+                            upload_policy: enumerateUploadPolicy(vm.project_files[i].uploadPolicy),
                             mime_type: encodeURIComponent('application/x-osm+xml'),
                             layer_name: encodeURIComponent(vm.project_files[i].fileName.replace(/\.[^/.]+$/,"")),
                             data: encodeURIComponent('<?xml version="1.0" encoding="utf8"?><osm generator="JOSM" version="0.6"></osm>')
@@ -1396,10 +1422,28 @@
                             .catch(function() {
                                 //warn that JSOM couldn't be started
                                 vm.editorStartError = 'josm-error';
-                            });
+                            });  
                     }
                 }
             }
+        };
+
+        /**
+         * Load a project file into JOSM for validation purposes
+         * @param file
+         */
+        vm.loadProjectFile = function (file) {
+            var taskImportParams = {
+                new_layer: true,
+                upload_policy: enumerateUploadPolicy(file.uploadPolicy),
+                layer_name: encodeURIComponent(file.fileName.replace(/\.[^/.]+$/,"")),
+                url: editorService.getProjectFileOSMXMLUrl(vm.projectData.projectId, vm.getSelectTaskIds(), file)
+            }
+            editorService.sendJOSMCmd('http://127.0.0.1:8111/import', taskImportParams)
+                .catch(function() {
+                    //warn that JSOM couldn't be started
+                    vm.editorStartError = 'josm-error';
+                });  
         };
 
         /**
@@ -1508,7 +1552,7 @@
         };
 
         /**
-         * Higlights the set of tasks on the map
+         * Highlights the set of tasks on the map
          * @param doneTaskIds - array of task ids
          */
         vm.highlightTasks = function (doneTaskIds) {
@@ -1604,17 +1648,18 @@
          * @param search
          */
         vm.searchUser = function (search) {
+            // If the search is empty, do nothing.
+            if (!search || search.length === 0) {
+              vm.suggestedUsers = [];
+              return $q.resolve(vm.suggestedUsers);
+            }
+
             // Search for a user by calling the API
-            var resultsPromise = userService.searchUser(search);
+            var resultsPromise = userService.searchUser(search, vm.projectData ? parseInt(vm.projectData.projectId, 10) : null);
             return resultsPromise.then(function (data) {
                 // On success
-                vm.usernames = [];
-                if (data.usernames) {
-                    for (var i = 0; i < data.usernames.length; i++) {
-                        vm.usernames.push({'label': data.usernames[i]});
-                    }
-                }
-                return data.usernames;
+                vm.suggestedUsers = data.users;
+                return vm.suggestedUsers;
             }, function () {
                 // On error
             });
@@ -1627,7 +1672,7 @@
         vm.formatUserTag = function (item) {
             // Format the user tag by wrapping into brackets so it is easier to detect that it is a username
             // especially when there are spaces in the username
-            return '@[' + item.label + ']';
+            return '@[' + item.username + ']';
         };
 
         /**
