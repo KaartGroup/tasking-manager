@@ -4,7 +4,7 @@ from schematics.types import StringType, BaseType, IntType, BooleanType, DateTim
 from schematics.types.compound import ListType, ModelType
 from server.models.dtos.user_dto import is_known_mapping_level
 from server.models.dtos.stats_dto import Pagination
-from server.models.postgis.statuses import ProjectStatus, ProjectPriority, MappingTypes, TaskCreationMode
+from server.models.postgis.statuses import ProjectStatus, ProjectPriority, MappingTypes, TaskCreationMode, Editors
 
 
 def is_known_project_status(value):
@@ -40,6 +40,19 @@ def is_known_mapping_type(value):
         raise ValidationError(f'Unknown mappingType: {value} Valid values are {MappingTypes.ROADS.name}, '
                               f'{MappingTypes.BUILDINGS.name}, {MappingTypes.WATERWAYS.name}, '
                               f'{MappingTypes.LAND_USE.name}, {MappingTypes.OTHER.name}')
+
+
+def is_known_editor(value):
+    """ Validates Editor is known value"""
+    if type(value) == list:
+        return  # Don't validate the entire list, just the individual values
+
+    try:
+        Editors[value.upper()]
+    except KeyError:
+        raise ValidationError(f'Unknown editor: {value} Valid values are {Editors.ID.name}, '
+                              f'{Editors.JOSM.name}, {Editors.POTLATCH_2.name}, '
+                              f'{Editors.FIELD_PAPERS.name}, {EDITORS.ID_X.name}')
 
 
 def is_known_task_creation_mode(value):
@@ -105,6 +118,8 @@ class ProjectDTO(Model):
     active_mappers = IntType(serialized_name='activeMappers')
     task_creation_mode = StringType(required=True, serialized_name='taskCreationMode',
                                     validators=[is_known_task_creation_mode], serialize_when_none=False)
+    map_editors = ListType(StringType, serialized_name='mapEditors', validators=[is_known_editor])
+    validate_editors = ListType(StringType, serialized_name='validateEditors', validators=[is_known_editor])
 
 
 class ProjectSearchDTO(Model):
@@ -118,6 +133,8 @@ class ProjectSearchDTO(Model):
     page = IntType(required=True)
     text_search = StringType()
     is_project_manager = BooleanType(required=True, default=False)
+    map_editors = ListType(StringType, validators=[is_known_editor])
+    validate_editors = ListType(StringType, validators=[is_known_editor])
 
     def __hash__(self):
         """ Make object hashable so we can cache user searches"""
@@ -129,9 +146,17 @@ class ProjectSearchDTO(Model):
         if self.project_statuses:
             for project_status in self.project_statuses:
                 hashable_project_statuses = hashable_project_statuses + project_status
+        hashable_map_editors = ''
+        if self.map_editors:
+            for map_editor in self.map_editors:
+                hashable_map_editors = hashable_map_editors + map_editor
+        hashable_validate_editors = ''
+        if self.validate_editors:
+            for validate_editor in self.validate_editors:
+                hashable_validate_editors = hashable_validate_editors + validate_editor
 
         return hash((self.preferred_locale, self.mapper_level, hashable_mapping_types, hashable_project_statuses,
-                     self.organisation_tag, self.campaign_tag, self.page, self.text_search, self.is_project_manager))
+                     self.organisation_tag, self.campaign_tag, self.page, self.text_search, self.is_project_manager, hashable_map_editors, hashable_validate_editors))
 
 
 class ProjectSearchBBoxDTO(Model):

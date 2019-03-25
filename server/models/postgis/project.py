@@ -13,7 +13,7 @@ from server.models.dtos.project_dto import ProjectDTO, DraftProjectDTO, ProjectS
 from server.models.dtos.tags_dto import TagsDTO
 from server.models.postgis.priority_area import PriorityArea, project_priority_areas
 from server.models.postgis.project_info import ProjectInfo
-from server.models.postgis.statuses import ProjectStatus, ProjectPriority, MappingLevel, TaskStatus, MappingTypes, TaskCreationMode
+from server.models.postgis.statuses import ProjectStatus, ProjectPriority, MappingLevel, TaskStatus, MappingTypes, TaskCreationMode, Editors
 from server.models.postgis.tags import Tags
 from server.models.postgis.task import Task
 from server.models.postgis.user import User
@@ -63,6 +63,10 @@ class Project(db.Model):
     mapping_types = db.Column(ARRAY(db.Integer), index=True)
     organisation_tag = db.Column(db.String, index=True)
     campaign_tag = db.Column(db.String, index=True)
+
+    # Editors
+    map_editors = db.Column(ARRAY(db.Integer), default=[0, 1, 2, 3], index=True, nullable=False)
+    validate_editors = db.Column(ARRAY(db.Integer), default=[0, 1, 2, 3], index=True, nullable=False)
 
     # Stats
     total_tasks = db.Column(db.Integer, nullable=False)
@@ -202,6 +206,17 @@ class Project(db.Model):
         for mapping_type in project_dto.mapping_types:
             type_array.append(MappingTypes[mapping_type].value)
         self.mapping_types = type_array
+
+        # Cast Editor strings to int array
+        map_editors_array = []
+        for map_editor in project_dto.map_editors:
+            map_editors_array.append(Editors[map_editor].value)
+        self.map_editors = map_editors_array
+
+        validate_editors_array = []
+        for validate_editor in project_dto.validate_editors:
+            validate_editors_array.append(Editors[validate_editor].value)
+        self.validate_editors = validate_editors_array
 
         # Add list of allowed users, meaning the project can only be mapped by users in this list
         if hasattr(project_dto, 'allowed_users'):
@@ -369,6 +384,20 @@ class Project(db.Model):
 
             base_dto.mapping_types = mapping_types
 
+        if self.map_editors:
+            map_editors = []
+            for map_editor in self.map_editors:
+                map_editors.append(Editors(map_editor).name)
+
+            base_dto.map_editors = map_editors
+
+        if self.validate_editors:
+            validate_editors = []
+            for validate_editor in self.validate_editors:
+                validate_editors.append(Editors(validate_editor).name)
+
+            base_dto.validate_editors = validate_editors
+
         if self.priority_areas:
             geojson_areas = []
             for priority_area in self.priority_areas:
@@ -426,7 +455,6 @@ class Project(db.Model):
         tags_dto = TagsDTO()
         tags_dto.tags = [r[1] for r in query]
         return tags_dto
-
 
     def as_dto_for_admin(self, project_id):
         """ Creates a Project DTO suitable for transmitting to project admins """
