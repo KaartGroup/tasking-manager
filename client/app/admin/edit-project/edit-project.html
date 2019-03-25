@@ -447,6 +447,42 @@
                                         </li>
                                     </ul>
                                 </div>
+                                <div class="form__group form__group--section">
+                                    <label class="form__label">{{ 'Editors for mapping' | translate }}</label>
+                                    <label class="form__option">
+                                        <input type="checkbox" ng-model="editProjectCtrl.mapEditors.id"/>{{ 'iD Editor' | translate }}
+                                    </label>
+                                    <label class="form__option">
+                                        <input type="checkbox" ng-model="editProjectCtrl.mapEditors.josm"/>{{ 'JOSM' | translate }}
+                                    </label>
+                                    <label class="form__option">
+                                        <input type="checkbox" ng-model="editProjectCtrl.mapEditors.potlatch2"/>{{ 'Potlatch 2' | translate }}
+                                    </label>
+                                    <label class="form__option">
+                                        <input type="checkbox" ng-model="editProjectCtrl.mapEditors.fieldpapers"/>{{ 'Field Papers' | translate }}
+                                    </label>
+                                    <label ng-show="editProjectCtrl.userRole === 'ADMIN'"  class="form__option">
+                                        <input type="checkbox" ng-model="editProjectCtrl.mapEditors.id_x"/>{{ 'iD X' | translate }}
+                                    </label>
+                                </div>
+                                <div class="form__group form__group--section">
+                                    <label class="form__label">{{ 'Editors for validation' | translate }}</label>
+                                    <label class="form__option">
+                                        <input type="checkbox" ng-model="editProjectCtrl.validateEditors.id"/>{{ 'iD Editor' | translate }}
+                                    </label>
+                                    <label class="form__option">
+                                        <input type="checkbox" ng-model="editProjectCtrl.validateEditors.josm"/>{{ 'JOSM' | translate }}
+                                    </label>
+                                    <label class="form__option">
+                                        <input type="checkbox" ng-model="editProjectCtrl.validateEditors.potlatch2"/>{{ 'Potlatch 2' | translate }}
+                                    </label>
+                                    <label class="form__option">
+                                        <input type="checkbox" ng-model="editProjectCtrl.validateEditors.fieldpapers"/>{{ 'Field Papers' | translate }}
+                                    </label>
+                                    <label ng-show="editProjectCtrl.userRole === 'ADMIN'" class="form__option">
+                                        <input type="checkbox" ng-model="editProjectCtrl.validateEditors.id_x"/>{{ 'iD X' | translate }}
+                                    </label>
+                                </div>
                             </fieldset>
                         </div>
                             <!--/ settings -->

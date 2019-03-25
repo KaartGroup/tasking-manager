@@ -40,6 +40,24 @@
             other: false
         };
 
+        // Editors for mapping
+        vm.mapEditors = {
+            id: false,
+            josm: false,
+            potlatch2: false,
+            fieldpapers: false,
+            id_x: false
+        };
+
+        // Editors for validation
+        vm.validateEditors = {
+            id: false,
+            josm: false,
+            potlatch2: false,
+            fieldpapers: false,
+            id_x: false
+        };
+
         // Tags
         vm.organisationTags = [];
         vm.campaignsTags = [];
@@ -82,6 +100,9 @@
         // Form
         vm.form = {};
 
+        // User role
+        vm.userRole = '';
+
         activate();
 
         function activate() {
@@ -99,6 +120,7 @@
             if (session){
                 var resultsPromise = accountService.getUser(session.username);
                 resultsPromise.then(function (user) {
+                    vm.userRole = user.role;
                     // Returned the user successfully. Check the user's role
                     if (user.role !== 'PROJECT_MANAGER' && user.role !== 'ADMIN'){
                         $location.path('/');
@@ -167,6 +189,8 @@
             // Prepare the data for sending to API by removing any locales with no fields
             if (!requiredFieldsMissing && vm.editForm.$valid){
                 vm.project.mappingTypes = getMappingTypesArray();
+                vm.project.mapEditors = getMapEditorsArray();
+                vm.project.validateEditors = getValidateEditorsArray();
                 vm.project.josmPreset = vm.josmPreset;
                 for (var i = 0; i < vm.project.projectInfoLocales.length; i++){
                     var info = vm.project.projectInfoLocales[i];
@@ -790,6 +814,8 @@
                     vm.project.dueDate = new Date(vm.project.dueDate);
                 }
                 populateTypesOfMapping();
+                populateEditorsForMapping();
+                populateEditorsForValidation();
                 addAOIToMap();
                 addPriorityAreasToMap();
                 if (vm.project.organisationTag) {
@@ -926,6 +952,101 @@
                 mappingTypesArray.push("OTHER");
             }
             return mappingTypesArray;
+        }
+
+        /**
+         * Populate the mapping editor fields by checking which tags exist
+         * in the mapEditors array on the project
+         */
+        function populateEditorsForMapping(){
+            if (vm.project.mapEditors) {
+                if (vm.project.mapEditors.indexOf("ID") != -1) {
+                    vm.mapEditors.id = true;
+                }
+                if (vm.project.mapEditors.indexOf("JOSM") != -1) {
+                    vm.mapEditors.josm = true;
+                }
+                if (vm.project.mapEditors.indexOf("POTLATCH_2") != -1) {
+                    vm.mapEditors.potlatch2 = true;
+                }
+                if (vm.project.mapEditors.indexOf("FIELD_PAPERS") != -1) {
+                    vm.mapEditors.fieldpapers = true;
+                }
+                if (vm.project.mapEditors.indexOf("ID_X") != -1) {
+                    vm.mapEditors.id_x = true;
+                }
+            }
+        }
+
+        /**
+         * Get map editors in array
+         */
+        function getMapEditorsArray(){
+            var mapEditorsArray = [];
+            if (vm.mapEditors.id){
+                mapEditorsArray.push("ID");
+            }
+            if (vm.mapEditors.josm){
+                mapEditorsArray.push("JOSM");
+            }
+            if (vm.mapEditors.potlatch2) {
+                mapEditorsArray.push("POTLATCH_2");
+            }
+            if (vm.mapEditors.fieldpapers){
+                mapEditorsArray.push("FIELD_PAPERS");
+            }
+            if (vm.mapEditors.id_x){
+                mapEditorsArray.push("ID_X");
+            }
+            return mapEditorsArray;
+        }
+
+
+        /**
+         * Populate the validation editor fields by checking which tags exist
+         * in the validateEditors array on the project
+         */
+        function populateEditorsForValidation(){
+            if (vm.project.validateEditors) {
+                if (vm.project.validateEditors.indexOf("ID") != -1) {
+                    vm.validateEditors.id = true;
+                }
+                if (vm.project.validateEditors.indexOf("JOSM") != -1) {
+                    vm.validateEditors.josm = true;
+                }
+                if (vm.project.validateEditors.indexOf("POTLATCH_2") != -1) {
+                    vm.validateEditors.potlatch2 = true;
+                }
+                if (vm.project.validateEditors.indexOf("FIELD_PAPERS") != -1) {
+                    vm.validateEditors.fieldpapers = true;
+                }
+                if (vm.project.validateEditors.indexOf("ID_X") != -1) {
+                    vm.validateEditors.id_x = true;
+                }
+            }
+        }
+
+        /**
+         * Get validate editors in array
+         */
+        function getValidateEditorsArray(){
+            var validateEditorsArray = [];
+            if (vm.validateEditors.id){
+                validateEditorsArray.push("ID");
+            }
+            if (vm.validateEditors.josm){
+                validateEditorsArray.push("JOSM");
+            }
+            if (vm.validateEditors.potlatch2) {
+                validateEditorsArray.push("POTLATCH_2");
+            }
+            if (vm.validateEditors.fieldpapers){
+                validateEditorsArray.push("FIELD_PAPERS");
+            }
+            if (vm.validateEditors.id_x){
+                validateEditorsArray.push("ID_X");
+            }
+            return validateEditorsArray;
         }
 
          /**

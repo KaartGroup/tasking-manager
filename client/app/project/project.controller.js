@@ -59,7 +59,10 @@
 
         //editor
         vm.editorStartError = '';
-        vm.selectedEditor = 'ideditor';
+        vm.selectedMapEditor = 'ideditor';
+        vm.selectedValidateEditor = 'josm';
+        vm.mapEditors = [];
+        vm.validateEditors = [];
 
         //interaction
         vm.selectInteraction = null;
@@ -99,7 +102,8 @@
             vm.currentTab = 'instructions';
             vm.mappingStep = 'selecting';
             vm.validatingStep = 'selecting';
-            vm.selectedEditor = 'ideditor'; // default to iD editor
+            vm.selectedMapEditor = 'ideditor'; // default to iD editor
+            vm.selectedValidateEditor = 'josm';
             mapService.createOSMMap('map');
             mapService.addOverviewMap();
             vm.map = mapService.getOSMMap();
@@ -115,6 +119,7 @@
                 var resultsPromise = accountService.getUser(session.username);
                 resultsPromise.then(function (user) {
                     vm.user = user;
+                    console.log(user);
                     initialiseProject(vm.id);
                 }, function () {
                     initialiseProject(vm.id);
@@ -137,7 +142,9 @@
             }, 10000);
 
             // set up the preferred editor from user preferences
-            vm.selectedEditor = userPreferencesService.getFavouriteEditor();
+            
+            vm.selectedMapEditor = userPreferencesService.getFavouriteEditor();
+            vm.selectedValidateEditor = userPreferencesService.getFavouriteEditor();
         }
 
         // listen for navigation away from the page event and stop the autrefresh timer
@@ -172,14 +179,15 @@
         };
 
         vm.updatePreferedEditor = function () {
-            userPreferencesService.setFavouriteEditor(vm.selectedEditor);
+            userPreferencesService.setFavouriteEditor(vm.selectedMapEditor);
         };
 
         /**
          * Reset the user's selected editor back to the default
          */
         vm.resetSelectedEditor = function() {
-          vm.selectedEditor = 'ideditor';
+          vm.selectedMapEditor = vm.mapEditors[0].value;
+          vm.selectedValidateEditor = vm.validateEditors[0].value;
           vm.editorStartError = '';
         };
 
@@ -442,6 +450,10 @@
             resultsPromise.then(function (data) {
                 //project returned successfully
                 vm.projectData = data;
+                vm.mapEditors = createEditorList(vm.projectData.mapEditors);
+                vm.selectedMapEditor = vm.mapEditors[0].value;
+                vm.validateEditors = createEditorList(vm.projectData.validateEditors);
+                vm.selectedValidateEditor = vm.validateEditors[0].value;
                 vm.userCanMap = vm.user && projectService.userCanMapProject(vm.user.mappingLevel, vm.projectData.mapperLevel, vm.projectData.enforceMapperLevel);
                 vm.userCanValidate = vm.user && projectService.userCanValidateProject(vm.user.role, vm.projectData.enforceValidatorRole);
                 addAoiToMap(vm.projectData.areaOfInterest);
@@ -449,6 +461,22 @@
                 addProjectTasksToMap(vm.projectData.tasks, true);
                 // Add OpenLayers interactions
                 addInteractions();
+
+
+                // set up the preferred editor from user preferences
+                // check if their preferred editor is in the allowed editors otherwise, pick first of allowed editors
+                if (vm.mapEditors.filter(function(e) { return e.value === userPreferencesService.getFavouriteEditor() }).length > 0) {
+                    vm.selectedMapEditor = userPreferencesService.getFavouriteEditor();
+                }
+                else {
+                    vm.selectedMapEditor = vm.mapEditors[0].value;
+                }
+                if (vm.validateEditors.filter(function(e) { return e.value === userPreferencesService.getFavouriteEditor() }).length > 0) {
+                    vm.selectedValidateEditor = userPreferencesService.getFavouriteEditor();
+                }
+                else {
+                    vm.selectedValidateEditor = vm.validateEditors[0].value;
+                }
 
                 //add a layer for users locked tasks
                 if (!vm.lockedByCurrentUserVectorLayer) {
@@ -876,7 +904,7 @@
             //
             // Use of the title attribute is a hack, but the sanitizer allows it
             // through and it's important these comments get properly sanitized.
-            if (event.target.tagName === 'A' && vm.selectedEditor === 'josm') {
+            if (event.target.tagName === 'A' && (vm.selectedMapEditor === 'josm' || vm.selectedValidateEditor === 'josm')) {
                 var title = event.target.getAttribute("title");
                 var editorCommand = null;
                 var params = null;
@@ -1392,6 +1420,15 @@
                     vm.getSelectTaskIds()
                 );
             }
+            else if (editor === 'id_x'){
+                editorService.launchIdX(
+                    center,
+                    changesetComment,
+                    imageryUrl,
+                    vm.projectData.projectId,
+                    vm.getSelectTaskIds()
+                )
+            }
             else if (editor === 'potlatch2') {
                 editorService.launchPotlatch2Editor(center);
             }
@@ -1555,7 +1592,7 @@
 
           // Try sending to JOSM if it's user's chosen editor, otherwise Overpass Turbo.
           var overpassApiURL = 'https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(query);
-          if (vm.selectedEditor === 'josm') {
+          if (vm.selectedMapEditor === 'josm' || vm.selectedValidateEditor === 'josm') {
             editorService.sendJOSMCmd('http://127.0.0.1:8111/import', {
                                         new_layer: 'true',
                                         layer_name: adjustedDateString,
@@ -1850,6 +1887,45 @@
             // Format the user tag by wrapping into brackets so it is easier to detect that it is a username
             // especially when there are spaces in the username
             return '@[' + item.username + ']';
+        };
+
+        /**
+         * Creates json objects for editors 
+         * @params editors
+         */
+        function createEditorList(editors) {
+            var result = [];
+            if (editors.includes("ID")) {
+                result.push({
+                    "name": "iD Editor",
+                    "value": "ideditor"
+                });
+            }
+            if (editors.includes("JOSM")) {
+                result.push({
+                    "name": "JOSM",
+                    "value": "josm"
+                });
+            }
+            if (editors.includes("POTLATCH_2")) {
+                result.push({
+                    "name": "Potlatch 2",
+                    "value": "potlatch2"
+                });
+            }
+            if (editors.includes("FIELD_PAPERS")) {
+                result.push({
+                    "name": "Field Papers",
+                    "value": "fieldpapers"
+                });
+            }
+            if (vm.user.isExpert && editors.includes("ID_X")) {
+                result.push({
+                    "name": "iD X",
+                    "value": "id_x"
+                });
+            }
+            return result;
         };
     }
 })
