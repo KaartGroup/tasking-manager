@@ -61,6 +61,8 @@ class TaskDTO(Model):
     project_id = IntType(serialized_name='projectId')
     task_status = StringType(serialized_name='taskStatus')
     lock_holder = StringType(serialized_name='lockHolder', serialize_when_none=False)
+    assignee = IntType(serialized_name='assignedTo', serialize_when_none=False)
+    assigner = IntType(serialized_name='assignedBy', serialize_when_none=False)
     task_history = ListType(ModelType(TaskHistoryDTO), serialized_name='taskHistory')
     per_task_instructions = StringType(serialized_name='perTaskInstructions', serialize_when_none=False)
     is_undoable = BooleanType(serialized_name='isUndoable', default=False)
@@ -70,6 +72,7 @@ class TaskDTO(Model):
 class TaskDTOs(Model):
     """ Describes an array of Task DTOs"""
     tasks = ListType(ModelType(TaskDTO))
+
 
 class TaskCommentDTO(Model):
     """ Describes the model used to add a standalone comment to a task outside of mapping/validation """

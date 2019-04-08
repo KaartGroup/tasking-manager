@@ -74,3 +74,9 @@ class UserRole(Enum):
     ADMIN = 1
     PROJECT_MANAGER = 2
     VALIDATOR = 4
+
+
+class AssignmentState(Enum):
+    """ Describes whethere a task is assigned for mapping or validation """
+    MAPPING = 0
+    VALIDATION = 1
