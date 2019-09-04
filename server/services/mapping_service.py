@@ -326,7 +326,12 @@ class MappingService:
                         file_name=os.path.splitext(dto.file_name)[0])
                     )
                 )
-            subprocess.call(task_cmd, shell=True)
+            try:
+                subprocess.check_output(task_cmd, shell=True)
+            except CalledProcessError:
+                for filename in osm_files:
+                    add_version_numbers_to_osm_xml(filename)
+                subprocess.check_output(task_cmd, shell=True)
             os.remove(os.path.join(filedir, poly))
 
         # Merge the extracted files back together. Used if more than one task is sent in request.
@@ -344,6 +349,16 @@ class MappingService:
         shutil.rmtree(filedir)
 
         return xml
+
+    @staticmethod
+    def add_version_numbers_to_osm_xml(filename):
+        tree = ET.parse(filename)
+        root = tree.getroot()
+        if 'version' in root.attrib and float(root.attrib['version']) >= 0.6 and 'generator' in root.attrib and root.attrib['generator'] == "JOSM":
+            for child in root:
+                if 'version' not in child.attrib:
+                    child.set('version', '0')
+        tree.write(filename, xml_declaration=True, encoding="UTF-8")
 
     def reset_all_badimagery(project_id: int, user_id: int):
         """ Marks all bad imagery tasks ready for mapping """
