@@ -20,12 +20,12 @@ jobs:
         command: |
           chown -R circleci:circleci $CIRCLE_WORKING_DIRECTORY
           chmod -R 755 $CIRCLE_WORKING_DIRECTORY
-    - restore_cache:
-        keys:
-        - cached-dependencies
-        paths:
-        - client/node_modules
-        - env
+    # - restore_cache:
+    #     keys:
+    #     - cached-dependencies
+    #     paths:
+    #     - client/node_modules
+    #     - env
     - run:
         name: Install requirements
         command: |
