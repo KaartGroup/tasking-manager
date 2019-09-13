@@ -51,9 +51,9 @@ jobs:
           JUNIT_REPORT_PATH: $CIRCLE_WORKING_DIRECTORY/tests/client/junit/
           JUNIT_REPORT_NAME: test-results.xml
     - store_test_results:
-        path: tests/client/junit
+        path: $CIRCLE_WORKING_DIRECTORY/tests/client/junit
     - store_artifacts:
-        path: tests/client/junit
+        path: $CIRCLE_WORKING_DIRECTORY/tests/client/junit
     - run:
         name: Run Python Tests
         command: |
