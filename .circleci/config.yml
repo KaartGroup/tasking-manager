@@ -50,7 +50,6 @@ jobs:
         environment:
           JUNIT_REPORT_PATH: $CIRCLE_WORKING_DIRECTORY/tests/client/junit/
           JUNIT_REPORT_NAME: test-results.xml
-          PHANTOMJS_BIN: \NPM\Modules\PhantomJS.cmd
     - store_test_results:
         path: tests/client/junit
     - store_artifacts:
