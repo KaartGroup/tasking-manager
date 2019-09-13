@@ -46,11 +46,11 @@ jobs:
           cd $CIRCLE_WORKING_DIRECTORY/tests/client
           mkdir $CIRCLE_WORKING_DIRECTORY/tests/client/junit
           $CIRCLE_WORKING_DIRECTORY/client/node_modules/.bin/karma start ./karma.conf.js \
-            --single-run --browsers PhantomJS --reporters junit --log-level debug --no-auto-watch
+            --single-run --browsers PhantomJS --reporters junit 
         environment:
           JUNIT_REPORT_PATH: $CIRCLE_WORKING_DIRECTORY/tests/client/junit/
           JUNIT_REPORT_NAME: test-results.xml
-          PHANTOMJS_BIN: C: \NPM\Modules\PhantomJS.cmd
+          PHANTOMJS_BIN: \NPM\Modules\PhantomJS.cmd
     - store_test_results:
         path: tests/client/junit
     - store_artifacts:
