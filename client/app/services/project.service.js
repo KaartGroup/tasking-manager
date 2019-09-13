@@ -321,10 +321,32 @@
             var newTaskGrid = [];
             for (var i = 0; i < taskGrid.length; i++) {
                 var taskGeoJSON = geospatialService.getGeoJSONObjectFromFeature(taskGrid[i]);
+		// Convert to multipolygon
+                if (drawnPolygonGeoJSON.geometry.type == "Point") {
+		    drawnPolygonGeoJSON = turf.centroid(drawnPolygonGeoJSON);
+		}
+		var tasksGeoJSONPolygon = new Array();
+		if (taskGeoJSON.geometry.type == "MultiPolygon") {
+		    for (var j = 0; j < taskGeoJSON.geometry.coordinates.length; j++) {
+		        tasksGeoJSONPolygon.push(turf.polygon(taskGeoJSON.geometry.coordinates[j]));
+		    }
+		}
+		else if (tasksGeoJSON.geometry.type == "Polygon") {
+		    tasksGeoJSONPolygon.push(taskGeoJSON);
+		}
                 // Check if the task intersects with the drawn polygon
                 var intersection = turf.intersect(drawnPolygonGeoJSON, taskGeoJSON);
+		if (intersection == null || intersection == undefined || intersection.geometry == null) {
+		    for (var j = 0; j < tasksGeoJSONPolygon.length; j++) {
+			taskGeoJSON = tasksGeoJSONPolygon[j];
+		        intersection = turf.intersect(drawnPolygonGeoJSON, taskGeoJSON);
+			if (intersection != null && intersection != undefined && intersection.geometry != null) {
+			    break;
+			}
+		    }
+		}
                 // If the task doesn't intersect with the drawn polygon, copy the existing task into the new task grid
-                if (!intersection) {
+                if (intersection == null || intersection == undefined || intersection.geometry == null) {
                     newTaskGrid.push(taskGrid[i]);
                 }
                 // If the task does intersect, get the split tasks and add these to the new task grid
@@ -377,10 +399,10 @@
          */
         function getMapillarySequences(bbox, startDate, endDate, usernames) {
 	    if (usernames) {
-		var url = configService.tmAPI + '/admin/mapillary-tasks?bbox=' + bbox + '&start_date=' + startDate + '&end_date=' + endDate + '&usernames=' + usernames
+		var url = configService.tmAPI + '/admin/mapillary-tasks?bbox=' + bbox + '&start_time=' + startDate + '&end_time=' + endDate + '&usernames=' + usernames
 	    }
 	    else {
-		var url = configService.tmAPI + '/admin/mapillary-tasks?bbox=' + bbox + '&start_date=' + startDate + '&end_date=' + endDate
+		var url = configService.tmAPI + '/admin/mapillary-tasks?bbox=' + bbox + '&start_time=' + startDate + '&end_time=' + endDate
 	    }
             return $http({
                 method: 'GET',
