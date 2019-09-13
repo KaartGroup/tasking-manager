@@ -31,7 +31,7 @@ jobs:
         command: |
           # Install NPM packages and build client from gulpfile
           cd $CIRCLE_WORKING_DIRECTORY/client
-          npm install -g
+          sudo npm install -g
           ./node_modules/.bin/gulp build
           cd $CIRCLE_WORKING_DIRECTORY
           # Install Python dependencies
