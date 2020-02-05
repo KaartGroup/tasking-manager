@@ -96,6 +96,9 @@
         // Augmented diff or attic query selection
         vm.selectedItem = null;
 
+        // Project Files
+        vm.project_files = []
+
         //interval timer promise for autorefresh
         var autoRefresh = undefined;
 
@@ -547,11 +550,19 @@
                 vm.selectedMappingEditor = vm.mappingEditors[0].value;
                 vm.validationEditors = createEditorList(vm.projectData.validationEditors);
                 vm.selectedValidationEditor = vm.validationEditors[0].value;
-                vm.userCanMap = vm.user && projectService.userCanMapProject(vm.user.mappingLevel, vm.projectData.mapperLevel, vm.projectData.enforceMapperLevel);
-                vm.userCanValidate = vm.user && projectService.userCanValidateProject(vm.user.role, vm.user.mappingLevel, vm.projectData.enforceValidatorRole, vm.projectData.allowNonBeginners);
+                // No idea why we had to do it this way but the old way wasn't working
+                // no touchy
+                if (vm.user) {
+                vm.userCanMap = projectService.userCanMapProject(vm.user.mappingLevel, vm.projectData.mapperLevel, vm.projectData.enforceMapperLevel);
+                vm.userCanValidate = projectService.userCanValidateProject(vm.user.role, vm.user.mappingLevel, vm.projectData.enforceValidatorRole, vm.projectData.allowNonBeginners);
                 // If validator role enforced, show validator+ OSMCha buttons; otherwise show experts too
                 vm.showOSMCha = vm.projectData.enforceValidatorRole ? vm.userCanValidate :
-                                (projectService.userCanValidateProject(vm.user.role, true) || vm.user.isExpert);
+                            (projectService.userCanValidateProject(vm.user.role, true) || vm.user.isExpert);
+                }
+                else {
+                    vm.userCanMap, vm.userCanValidate, vm.showOSMCha = false;
+                }
+                
                 addAoiToMap(vm.projectData.areaOfInterest);
                 addPriorityAreasToMap(vm.projectData.priorityAreas);
                 addProjectTasksToMap(vm.projectData.tasks, true);
@@ -1378,7 +1389,6 @@
          * Call api to lock currently selected task for mapping.  Will update view and map after unlock.
          */
         vm.lockSelectedTaskMapping = function () {
-            // console.log(vm.user);
             // if(vm.user.isEmailVerified){
                 vm.lockingReason = 'MAPPING';
                 var projectId = vm.projectData.projectId;
@@ -1624,7 +1634,8 @@
                     changesetComment,
                     imageryUrl,
                     vm.projectData.projectId,
-                    vm.getSelectTaskIds()
+                    vm.getSelectTaskIds(),
+                    vm.projectData.idPresets
                 );
             }
             else if (editor === 'potlatch2') {
@@ -1643,79 +1654,99 @@
                 );
             }
             else if (editor === 'josm') {
-
-                if (taskCount > 1) {
-                    // load a new empty layer in josm for task square(s).  This step required to get custom name for layer
-                    // use empty, uri encoded osmxml with upload=never for the data para
-                    var emptyTaskLayerParams = {
-                        new_layer: true,
-                        mime_type: encodeURIComponent('application/x-osm+xml'),
-                        layer_name: encodeURIComponent('Task Boundaries #' + vm.projectData.projectId + '- Do not edit or upload'),
-                        data: encodeURIComponent('<?xml version="1.0" encoding="utf8"?><osm generator="JOSM" upload="never" version="0.6"></osm>')
-                    };
-                    editorService.sendJOSMCmd('http://127.0.0.1:8111/load_data', emptyTaskLayerParams)
-                        .catch(function() {
-                            //warn that JSOM couldn't be started
-                            vm.editorStartError = 'josm-error';
-                        });
-
-                    //load task square(s) into JOSM
-                    var taskImportParams = {
-                        url: editorService.getOSMXMLUrl(vm.projectData.projectId, vm.getSelectTaskIds()),
-                        new_layer: false
-                    };
-                    editorService.sendJOSMCmd('http://127.0.0.1:8111/import', taskImportParams)
-                        .catch(function() {
-                            //warn that JSOM couldn't be started
-                            vm.editorStartError = 'josm-error';
-                        });
+                launchJosm(
+                    taskCount,
+                    imageryUrl,
+                    extentTransformed,
+                    changesetComment
+                    )
+            }
+            else if (editor === 'josmmapwithai') {
+                launchJosm(
+                    taskCount,
+                    imageryUrl,
+                    extentTransformed,
+                    changesetComment,
+                    'http://127.0.0.1:8111/mapwithai'
+                    );
+            }
+            else if (editor === 'custom'){
+                var domain = vm.projectData.customEditor.url.replace('http://','').replace('https://','').split(/[/?#]/)[0];
+                var josm_endpoints = ["127.0.0.1:8111", "127.0.0.1:8112", "localhost:8111", "localhost:8112"];
+                if (josm_endpoints.includes(domain)) {
+                    launchJosm(
+                        taskCount,
+                        imageryUrl,
+                        extentTransformed,
+                        changesetComment,
+                        vm.projectData.customEditor.url
+                        )
                 }
-
-                //load aerial photography if present
-                // TODO: make changeset source part of project info
-                var changesetSource = "Kaart Ground Survey 2019";
-                var hasImagery = false;
-                if (imageryUrl && typeof imageryUrl != "undefined" && imageryUrl !== '') {
-                    changesetSource = imageryUrl;
-                    hasImagery = true;
+                else{
+                    editorService.launchCustomIdEditor(
+                        center,
+                        changesetComment,
+                        imageryUrl,
+                        vm.projectData.projectId,
+                        vm.getSelectTaskIds(),
+                        vm.projectData.customEditor.url
+                    );
                 }
-                if (hasImagery) {
-                    var imageryParams = {
-                        title: encodeURIComponent('Tasking Manager Imagery - #' + vm.projectData.projectId),
-                        type: imageryUrl.toLowerCase().substring(0, 3),
-                        url: encodeURIComponent(imageryUrl)
-                    };
-                    editorService.sendJOSMCmd('http://127.0.0.1:8111/imagery', imageryParams)
-                        .catch(function() {
-                            //warn that imagery couldn't be loaded
-                            vm.editorStartError = 'josm-imagery-error';
-                        });
-                }
+            }
+        };
 
-                // load a new empty layer in josm for osm data, this step necessary to have a custom name for the layer
-                // use empty, uri encoded osmxml for the data param
-                var emptyOSMLayerParams = {
+        function launchJosm(
+            taskCount,
+            imageryUrl,
+            extentTransformed,
+            changesetComment,
+            customUrl) {
+            if (taskCount > 1) {
+                // load a new empty layer in josm for task square(s).  This step required to get custom name for layer
+                // use empty, uri encoded osmxml with upload=never for the data para
+                var emptyTaskLayerParams = {
                     new_layer: true,
-                    mime_type: 'application/x-osm+xml',
-                    layer_name: 'OSM Data',
-                    data: encodeURIComponent('<?xml version="1.0" encoding="utf8"?><osm generator="JOSM" version="0.6"></osm>')
-                }
-                editorService.sendJOSMCmd('http://127.0.0.1:8111/load_data', emptyOSMLayerParams)
+                    mime_type: encodeURIComponent('application/x-osm+xml'),
+                    layer_name: encodeURIComponent('Task Boundaries #' + vm.projectData.projectId + '- Do not edit or upload'),
+                    data: encodeURIComponent('<?xml version="1.0" encoding="utf8"?><osm generator="JOSM" upload="never" version="0.6"></osm>')
+                };
+                editorService.sendJOSMCmd('http://127.0.0.1:8111/load_data', emptyTaskLayerParams)
                     .catch(function() {
                         //warn that JSOM couldn't be started
                         vm.editorStartError = 'josm-error';
                     });
 
-                var loadAndZoomParams = {
-                    left: extentTransformed[0],
-                    bottom: extentTransformed[1],
-                    right: extentTransformed[2],
-                    top: extentTransformed[3],
-                    changeset_comment: encodeURIComponent(changesetComment),
-                    changeset_source: encodeURIComponent(changesetSource),
+                //load task square(s) into JOSM
+                var taskImportParams = {
+                    url: editorService.getOSMXMLUrl(vm.projectData.projectId, vm.getSelectTaskIds()),
                     new_layer: false
                 };
+                editorService.sendJOSMCmd('http://127.0.0.1:8111/import', taskImportParams)
+                    .catch(function() {
+                        //warn that JSOM couldn't be started
+                        vm.editorStartError = 'josm-error';
+                    });
+            }
 
+            //load aerial photography if present
+            var changesetSource = "Kaart Ground Survey 2020";
+            var hasImagery = false;
+            if (imageryUrl && typeof imageryUrl != "undefined" && imageryUrl !== '') {
+                changesetSource = imageryUrl;
+                hasImagery = true;
+            }
+            if (hasImagery) {
+                var imageryParams = {
+                    title: encodeURIComponent('Tasking Manager Imagery - #' + vm.projectData.projectId),
+                    type: imageryUrl.toLowerCase().substring(0, 3),
+                    url: encodeURIComponent(imageryUrl)
+                };
+                editorService.sendJOSMCmd('http://127.0.0.1:8111/imagery', imageryParams)
+                    .catch(function() {
+                        //warn that imagery couldn't be loaded
+                        vm.editorStartError = 'josm-imagery-error';
+                    });
+            }
                 // this is a future feature to be able to use an overpass query in lieu of the osm data
 
                 // if (overpassQuery){
@@ -1723,14 +1754,41 @@
                 //     ('http://127.0.0.1:8111/import?url=https://lz4.overpass-api.de/api/interpreter/?data=[out:xml];%20way[highway](53.2987342,-6.3870259,53.4105416,-6.1148829);%20(._;%3E;);%20out%20meta;');
                 // }
 
-                if (taskCount == 1) {
-                    //load OSM data and zoom to the bbox
-                    editorService.sendJOSMCmd('http://127.0.0.1:8111/load_and_zoom', loadAndZoomParams);
-                } else {
-                    //probably too much OSM data to download, just zoom to the bbox
-                    editorService.sendJOSMCmd('http://127.0.0.1:8111/zoom', loadAndZoomParams);
-                }
+            // load a new empty layer in josm for osm data, this step necessary to have a custom name for the layer
+            // use empty, uri encoded osmxml for the data param
+            var emptyOSMLayerParams = {
+                new_layer: true,
+                mime_type: 'application/x-osm+xml',
+                layer_name: 'OSM Data',
+                data: encodeURIComponent('<?xml version="1.0" encoding="utf8"?><osm generator="JOSM" version="0.6"></osm>')
+            }
+            editorService.sendJOSMCmd('http://127.0.0.1:8111/load_data', emptyOSMLayerParams)
+                .catch(function() {
+                    //warn that JSOM couldn't be started
+                    vm.editorStartError = 'josm-error';
+                });
 
+            var loadAndZoomParams = {
+                left: extentTransformed[0],
+                bottom: extentTransformed[1],
+                right: extentTransformed[2],
+                top: extentTransformed[3],
+                changeset_comment: encodeURIComponent(changesetComment),
+                changeset_source: encodeURIComponent(changesetSource),
+                new_layer: false
+            };
+
+            if (taskCount == 1) {
+                //load OSM data and zoom to the bbox
+                editorService.sendJOSMCmd('http://127.0.0.1:8111/load_and_zoom', loadAndZoomParams);
+            } else {
+                //probably too much OSM data to download, just zoom to the bbox
+                editorService.sendJOSMCmd('http://127.0.0.1:8111/zoom', loadAndZoomParams);
+            }
+            if (customUrl) {
+                //give it an empty param dict to avoid breaking things
+                editorService.sendJOSMCmd(customUrl, {});
+            }
 
                 // if there are project files, send the josm command with the api url to extract data
                 if (vm.currentTab === 'mapping' && vm.project_files.length > 0) {
@@ -1760,7 +1818,6 @@
                     }
                 }
             }
-        };
 
         /**
          * Load a project file into JOSM for validation purposes
@@ -1820,7 +1877,39 @@
             }
 
             return userList;
-        }
+        };
+
+        /**
+         * Inspects the task history of the currently selected task and, if
+         * available, returns a moment instance representing the earliest
+         * action date in the history or null otherwise
+         */
+        vm.earliestHistoryActionDate = function() {
+            var history = vm.selectedTaskData.taskHistory;
+            if (history && history.length > 0) {
+                return moment.min(history.map(function(entry) {
+                    return moment.utc(entry.actionDate);
+                }));
+            }
+
+            return null;
+        };
+
+        /**
+         * Inspects the task history of the currently selected task and, if
+         * available, returns a moment instance representing the earliest
+         * action date in the history or null otherwise
+         */
+        vm.earliestHistoryActionDate = function() {
+            var history = vm.selectedTaskData.taskHistory;
+            if (history && history.length > 0) {
+                return moment.min(history.map(function(entry) {
+                    return moment.utc(entry.actionDate);
+                }));
+            }
+
+            return null;
+        };
 
         /**
          * Inspects the task history of the currently selected task and, if
@@ -1946,6 +2035,35 @@
           var overpassURL = 'https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(query);
           var achaviURL = 'https://overpass-api.de/achavi/?url=' + encodeURIComponent(overpassURL);
           $window.open(achaviURL);
+        };
+
+        /**
+         * Load a project file into JOSM for validation purposes
+         * @param file
+         */
+        vm.loadProjectFile = function (file) {
+            var emptyTaskLayerParams = {
+                new_layer: true,
+                upload_policy: enumerateUploadPolicy(file.uploadPolicy),
+                layer_name: encodeURIComponent(file.fileName.replace(/\.[^/.]+$/,"")),
+                mime_type: encodeURIComponent('application/x-osm+xml'),
+                data: encodeURIComponent('<?xml version="1.0" encoding="utf8"?><osm generator="JOSM" version="0.6"></osm>')
+            }
+            editorService.sendJOSMCmd('http://127.0.0.1:8111/load_data', emptyTaskLayerParams)
+                .catch(function() {
+                    //warn that JSOM couldn't be started
+                    vm.editorStartError = 'josm-error';
+                });
+
+            var projectFileParams = {
+                new_layer: false,
+                url: editorService.getProjectFileOSMXMLUrl(vm.projectData.projectId, vm.getSelectTaskIds(), file)
+            }
+            editorService.sendJOSMCmd('http://127.0.0.1:8111/import', projectFileParams)
+                .catch(function() {
+                    //warn that JSOM couldn't be started
+                    vm.editorStartError = 'josm-error';
+                });
         };
 
         /**
@@ -2192,17 +2310,6 @@
         };
 
         /**
-         * Get all project files for a project
-         * @param project_id
-         */
-        function getProjectFiles(project_id) {
-            var resultsPromise = projectService.getProjectFiles(project_id);
-            resultsPromise.then(function (data) {
-               vm.project_files = data.projectFiles
-            })
-        }
-
-	/*
          * Creates json objects for editors
          * @params editors
          */
@@ -2232,14 +2339,37 @@
                     "value": "fieldpapers"
                 });
             }
+            if (editors.includes("CUSTOM")) {
+                result.push({
+                    "name": vm.projectData.customEditor.name,
+                    "value": "custom"
+                });
+            }
             if (editors.includes("RAPID")) {
                 result.push({
                     "name": "RapiD",
                     "value": "rapid"
                 });
             }
+            if (editors.includes("JOSMMAPWITHAI")) {
+                result.push({
+                    "name": "JOSM MapWithAI",
+                    "value": "josmmapwithai"
+                });
+            }
             return result;
         };
+
+        /**
+         * Get all project files for a project
+         * @param project_id
+         */
+        function getProjectFiles(project_id) {
+            var resultsPromise = projectService.getProjectFiles(project_id);
+            resultsPromise.then(function (data) {
+               vm.project_files = data.projectFiles
+            })
+        }
     }
 })
 ();
