@@ -74,7 +74,7 @@ class MapillaryService:
     @staticmethod
     def getMapillarySequences(parameters: dict):
         MAPILLARY_API = current_app.config['MAPILLARY_API']
-        MAPILLARY_TIME_CORRELATION = current_app.config['MAPILLARY_TIME_CORRELATION']
+        MAPILLARY_TIME_CORRELATION = int(current_app.config['MAPILLARY_TIME_CORRELATION'])
         parameters['client_id'] = MAPILLARY_API['clientId']
         if 'bbox' not in parameters:
             raise ValueError("parameters must include a bbox")
