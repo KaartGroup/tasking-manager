@@ -137,6 +137,11 @@ class TaskMappingIssue(db.Model):
     def __repr__(self):
         return "{0}: {1}".format(self.issue, self.count)
 
+    @staticmethod
+    def get_all_issues():
+        issues = TaskMappingIssue.query.all()
+        return issues
+
 
 class TaskHistory(db.Model):
     """ Describes the history associated with a task """

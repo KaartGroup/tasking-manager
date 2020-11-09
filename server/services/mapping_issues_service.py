@@ -1,5 +1,7 @@
 from server.models.postgis.mapping_issues import MappingIssueCategory
+from server.models.postgis.task import TaskMappingIssue
 from server.models.dtos.mapping_issues_dto import MappingIssueCategoryDTO
+import pandas as pd
 
 class MappingIssueCategoryService:
 
@@ -45,3 +47,20 @@ class MappingIssueCategoryService:
     def get_all_mapping_issue_categories(include_archived):
         """ Get all mapping issue categories"""
         return MappingIssueCategory.get_all_categories(include_archived)
+
+
+class MappingIssueService:
+
+    @staticmethod
+    def get_all_mapping_issues():
+        """
+        Get all issues from db
+        :raises: NotFound
+        """
+        issues = TaskMappingIssue.get_all_issues();
+
+        if issues is None:
+            raise NotFound()
+
+        pandasDataFrame = pd.DataFrame(data=issues)
+        return pandasDataFrame.to_csv()
