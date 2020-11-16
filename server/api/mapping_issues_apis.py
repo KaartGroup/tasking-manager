@@ -1,4 +1,4 @@
-from flask_restful import Resource, current_app, request
+from flask_restful import Resource, current_app, request, make_response
 from schematics.exceptions import DataError
 
 from server.models.dtos.mapping_issues_dto import MappingIssueCategoryDTO
@@ -236,6 +236,7 @@ class MappingIssueCategoriesAPI(Resource):
 
 
 class MappingIssuesAPI(Resource):
+
     @tm.pm_only()
     @token_auth.login_required
     def get(self):
@@ -264,7 +265,9 @@ class MappingIssuesAPI(Resource):
         """
         try:
             issuesCSV = MappingIssueService.get_all_mapping_issues()
-            return issuesCSV.toPrimitive(), 200
+            resp = make_response(issuesCSV, 200)
+            resp.headers.extend({'Content-Type': 'text/csv'})
+            return resp
         except NotFound:
             return {"Error": "Mapping-issues not found"}, 404
         except Exception as e:
