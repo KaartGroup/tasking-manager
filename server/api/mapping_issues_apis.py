@@ -239,7 +239,7 @@ class MappingIssuesAPI(Resource):
 
     @tm.pm_only()
     @token_auth.login_required
-    def get(self):
+    def get(self, project_id):
         """
         Gets all mapping issues and returns them as a csv string/file
         ___
@@ -255,15 +255,16 @@ class MappingIssuesAPI(Resource):
               default: Token sessionTokenHere==
         responses:
             200:
-            description: Mapping issues csv included in body
+                description: Mapping issues csv included in body
             401:
-            description: Unauthorized - Invalid credentials
+                description: Unauthorized - Invalid credentials
             404:
-            description: Mapping issues not found
+                description: Mapping issues not found
             500:
-            description: Internal server error
+                description: Internal server error
         """
         try:
+            issuesCSV = MappingIssueService.get_mapping_issues(project_id)
             issuesCSV = MappingIssueService.get_all_mapping_issues()
             resp = make_response(issuesCSV, 200)
             resp.headers.extend({'Content-Type': 'text/csv'})
