@@ -180,7 +180,7 @@ def init_flask_restful_routes(app):
     api.add_resource(MappingIssueCategoryAPI,       '/api/v1/mapping-issue-category', endpoint="create_mapping_issue_category", methods=['POST'])
     api.add_resource(MappingIssueCategoryAPI,       '/api/v1/mapping-issue-category/<int:category_id>', methods=['GET', 'PUT', 'DELETE'])
     api.add_resource(MappingIssueCategoriesAPI,     '/api/v1/mapping-issue-categories')
-    api.add_resource(MappingIssuesAPI,              '/api/v1/mapping-issues')
+    api.add_resource(MappingIssuesAPI,              '/api/v1/mapping-issues/<int:project_id>')
     api.add_resource(UserSearchAllAPI,              '/api/v1/user/search-all')
     api.add_resource(UserSearchFilterAPI,           '/api/v1/user/search/filter/<string:username>')
     api.add_resource(UserAPI,                       '/api/v1/user/<string:username>')
