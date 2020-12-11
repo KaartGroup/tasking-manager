@@ -16,7 +16,7 @@
             deleteMappingIssueCategory: deleteMappingIssueCategory,
             updateMappingIssueCategory: updateMappingIssueCategory,
             getMappingIssueCategories: getMappingIssueCategories,
-            getAllMappingIssues: getAllMappingIssues,
+            getMappingIssues: getMappingIssues,
         };
 
         return service;
@@ -128,13 +128,13 @@
         }
 
         /**
-        * Get all mapping issues as a CSV file
+        * Get mapping issues as a CSV file
         */
-        function getAllMappingIssues() {
+        function getMappingIssues(projectId, detailedIssues) {
             //Returns a promise
             return $http({
                 method:'GET',
-                url: configService.tmAPI + '/mapping-issues',
+                url: configService.tmAPI + '/mapping-issues/' + projectId + '/' + detailedIssues,
                 headers: authService.getAuthenticatedHeader()
             }).then(function successCallback(response) {
                 // this callback will be called asynchronously
