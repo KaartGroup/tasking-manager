@@ -130,11 +130,11 @@
         /**
         * Get mapping issues as a CSV file
         */
-        function getMappingIssues(projectId, detailedIssues) {
+        function getMappingIssues(projectId, detailedIssues, zerosRows) {
             //Returns a promise
             return $http({
                 method:'GET',
-                url: configService.tmAPI + '/mapping-issues/' + projectId + '/' + detailedIssues,
+                url: configService.tmAPI + '/mapping-issues/' + projectId + '/' + detailedIssues + '/' + zerosRows,
                 headers: authService.getAuthenticatedHeader()
             }).then(function successCallback(response) {
                 // this callback will be called asynchronously

@@ -168,7 +168,14 @@
                             ng-click="projectDashboardCtrl.getMappingIssues(projectDashboardCtrl.projectId)">
                         {{ 'Get Mapping Issues' | translate }}
                     </button>
-                    <input type="checkbox" name="detailedIssues" class="detailed-issues-checkbox" ng-model="projectDashboardCtrl.detailedIssues"/><label for="detailedViewCheckbox">Detailed View</label>
+                    <div class="issues-checkboxes">
+                        <div>
+                            <input type="checkbox" name="detailedIssues" class="detailed-issues-checkbox" ng-model="projectDashboardCtrl.detailedIssues"/><label for="detailedIssues">Detailed View</label>
+                        </div>
+                        <div>
+                            <input type="checkbox" name="hideZerosRows" class="hide-zeros-rows-checkbox" ng-model="projectDashboardCtrl.hideZerosRows"/><label for="hideZerosRows">Hide Zeros Rows</label>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

@@ -57,7 +57,7 @@ class MappingIssueCategoryService:
 
 class MappingIssueExporter:
 
-    def get_mapping_issues(self, project_id: int, detailedView: str):
+    def get_mapping_issues(self, project_id: int, detailedView: str, zerosRows: str):
         """
         Returns a csv string of all mapping issues associated with the given project summed and sorted by user
         raises: NotFound
@@ -65,12 +65,15 @@ class MappingIssueExporter:
         detailed = False
         if (detailedView == "true"):
             detailed = True
+        zeros = False
+        if (zerosRows == "true"):
+            zeros = True
 
         #user_dict {str username : {int task (taskId) : {str issue : str issue_count}}}
         #project_users is a list of users on the project with no duplicates
         #int num_validated_tasks
         #tasks_as_tasks_dict {int taskId : task}
-        user_dict, project_users, num_validated_tasks, tasks_as_tasks_dict = MappingIssueExporter.compile_validated_tasks_by_user(project_id)
+        user_dict, project_users, num_validated_tasks, tasks_as_tasks_dict = MappingIssueExporter.compile_validated_tasks_by_user(project_id, zeros)
 
         #data_table {str user : numpy array of user issue totals}
         #category_index_dict {str issue : int issueId}
@@ -179,7 +182,7 @@ class MappingIssueExporter:
 
 
     @staticmethod
-    def compile_validated_tasks_by_user(project_id: int):
+    def compile_validated_tasks_by_user(project_id: int, zeros: bool):
         all_project_tasks = Task.get_all_tasks(project_id)
         validated_tasks = []
         project_users = []
@@ -226,9 +229,7 @@ class MappingIssueExporter:
 
             if (len(issue_dict.keys()) > 0):
                 task_dict[task.id] = deepcopy(issue_dict)
-            #*** Uncomment this else statement if rows with all zeros should be shown in detailed view ***
-            #*** Comment to hide zero rows in detailed view ***
-            else:
+            elif (zeros):
                 task_dict[task.id] = {}
 
             i += 1

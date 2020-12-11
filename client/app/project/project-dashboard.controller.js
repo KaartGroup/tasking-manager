@@ -19,6 +19,7 @@
         vm.projectContributions = [];
         vm.projectComments = [];
         vm.detailedIssues = false;
+        vm.hideZerosRows = false;
 
         activate();
 
@@ -106,7 +107,7 @@
         * Get mapping issues for this project as a CSV file
         */
         vm.getMappingIssues = function() {
-            var resultsPromise = mappingIssueService.getMappingIssues(vm.projectId, vm.detailedIssues);
+            var resultsPromise = mappingIssueService.getMappingIssues(vm.projectId, vm.detailedIssues, !vm.hideZerosRows);
             resultsPromise.then(function (data) {
                 //create file from csv string and download
                 var filename;
