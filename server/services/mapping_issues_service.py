@@ -57,7 +57,7 @@ class MappingIssueCategoryService:
 
 class MappingIssueExporter:
 
-    def get_mapping_issues(self, projectId: int, detailedView: str):
+    def get_mapping_issues(self, project_id: int, detailedView: str):
         """
         Returns a csv string of all mapping issues associated with the given project summed and sorted by user
         raises: NotFound
@@ -66,18 +66,18 @@ class MappingIssueExporter:
         if (detailedView == "true"):
             detailed = True
 
-        #userDict {str username : {int task (taskId) : {str issue : str issueCount}}}
-        #projectUsers is a list of users on the project with no duplicates
-        #int numValidatedTasks
-        #tasksAsTasksDict {int taskId : task}
-        userDict, projectUsers, numValidatedTasks, tasksAsTasksDict = MappingIssueExporter.compile_validated_tasks_by_user(projectId)
+        #user_dict {str username : {int task (taskId) : {str issue : str issue_count}}}
+        #project_users is a list of users on the project with no duplicates
+        #int num_validated_tasks
+        #tasks_as_tasks_dict {int taskId : task}
+        user_dict, project_users, num_validated_tasks, tasks_as_tasks_dict = MappingIssueExporter.compile_validated_tasks_by_user(project_id)
 
-        #dataTable {str user : numpy array of user issue totals}
-        #categoryIndexDict {str issue : int issueId}
-        #categoryNamesDict {int issueId : str issue}
-        #maxCategoryIndex: int, max issueId
+        #data_table {str user : numpy array of user issue totals}
+        #category_index_dict {str issue : int issueId}
+        #category_names_dict {int issueId : str issue}
+        #max_category_index: int, max issueId
         #totals: numpy array of project issue totals
-        dataTable, categoryIndexDict, categoryNamesDict, maxCategoryIndex, totals = MappingIssueExporter.build_issue_totals_table(userDict, projectUsers)
+        data_table, category_index_dict, category_names_dict, max_category_index, totals = MappingIssueExporter.build_issue_totals_table(user_dict, project_users)
 
         #Format
 
@@ -96,177 +96,174 @@ class MappingIssueExporter:
 
 
         """ Build the csv string """
-        projectContribDTO = StatsService.get_user_contributions(projectId)
+        project_contrib_dto = StatsService.get_user_contributions(project_id)
 
-        allRows = []
-        issueNamesRow = []
+        all_rows = []
+        issue_names_row = []
         if (detailed):
-           issueNamesRow.append('Username (tasks mapped)')
-           issueNamesRow.append('taskId: ValidatedBy')
+           issue_names_row.append('Username (tasks mapped)')
+           issue_names_row.append('taskId: ValidatedBy')
         else:
-            issueNamesRow.append('Username (tasks mapped)')
+            issue_names_row.append('Username (tasks mapped)')
 
-        possibleIndices = categoryNamesDict.keys()
-        for i in range(1, maxCategoryIndex + 1):  #category id is the category's index. Category ids start at 1
-            if (i in possibleIndices):
-                issueNamesRow.append(categoryNamesDict[i])
+        possible_indices = category_names_dict.keys()
+        for i in range(1, max_category_index + 1):  #category id is the category's index. Category ids start at 1
+            if (i in possible_indices):
+                issue_names_row.append(category_names_dict[i])
             else:
-                issueNamesRow.append('')
+                issue_names_row.append('')
 
-        allRows.append(','.join(issueNamesRow))
+        all_rows.append(','.join(issue_names_row))
 
-        for user in projectUsers:
+        for user in project_users:
             row = []
 
             if (detailed):
                 row.append('')
                 i = 0
-                for task in userDict[user]:
-                    validator = User.get_by_id(self, tasksAsTasksDict[task].validated_by).username
+                for task in user_dict[user]:
+                    validator = User.get_by_id(self, tasks_as_tasks_dict[task].validated_by).username
 
-                    singleTaskRow = []
+                    single_task_row = []
                     if (i == 0):
-                        singleTaskRow.append(user)
+                        single_task_row.append(user)
                     else:
-                        singleTaskRow.append('')
-                    singleTaskRow.append(str(task) + ': ' + validator)
-                    singleTaskRowIssueCounts = np.zeros(maxCategoryIndex + 1, dtype='i')
-                    for issue in userDict[user][task]:
-                        categoryIndex = categoryIndexDict[issue]
-                        singleTaskRowIssueCounts[categoryIndex] = userDict[user][task][issue]
+                        single_task_row.append('')
+                    single_task_row.append(str(task) + ': ' + validator)
+                    single_task_row_issue_counts = np.zeros(max_category_index + 1, dtype='i')
+                    for issue in user_dict[user][task]:
+                        category_index = category_index_dict[issue]
+                        single_task_row_issue_counts[category_index] = user_dict[user][task][issue]
 
-                    for issueCount in singleTaskRowIssueCounts:
-                        singleTaskRow.append(str(issueCount))
-                    singleTaskRow.pop(2)
-                    allRows.append(",".join(singleTaskRow))
+                    for issue_count in single_task_row_issue_counts:
+                        single_task_row.append(str(issue_count))
+                    single_task_row.pop(2)
+                    all_rows.append(",".join(single_task_row))
 
                     i += 1
 
-            numMappedTasks = -1
-            for userContrib in projectContribDTO.user_contributions:
-                if (userContrib.username == user):
-                    numMappedTasks = userContrib.mapped
+            num_mapped_tasks = -1
+            for user_contrib in project_contrib_dto.user_contributions:
+                if (user_contrib.username == user):
+                    num_mapped_tasks = user_contrib.mapped
                     break
 
-            row.append(user + ' (' + str(numMappedTasks) + ')')
+            row.append(user + ' (' + str(num_mapped_tasks) + ')')
 
-            for issueCount in dataTable[user]:
-                row.append(str(issueCount))
+            for issue_count in data_table[user]:
+                row.append(str(issue_count))
             row.pop(1)
 
             if (detailed):
                 row[1] = ''
-                row[0] = user + ' totals (' + str(numMappedTasks) + ')'
+                row[0] = user + ' totals (' + str(num_mapped_tasks) + ')'
 
-            allRows.append(','.join(row))
+            all_rows.append(','.join(row))
             if (detailed):
-                allRows[-1] = allRows[-1] + '\n'
+                all_rows[-1] = all_rows[-1] + '\n'
 
-        totalsRow = ['Project Totals']
+        totals_row = ['Project Totals']
         for value in totals:
-            totalsRow.append(str(value))
+            totals_row.append(str(value))
         if (not detailed):
-            totalsRow.pop(1)
+            totals_row.pop(1)
         else:
-            totalsRow[1] = ''
+            totals_row[1] = ''
 
-        allRows.append(','.join(totalsRow))
+        all_rows.append(','.join(totals_row))
 
-        csvString = '\n'.join(allRows)
-        #print(csvString)
+        csv_string = '\n'.join(all_rows)
+        #print(csv_string)
 
-        return csvString
+        return csv_string
 
 
     @staticmethod
-    def compile_validated_tasks_by_user(projectId: int):
-        allProjectTasks = Task.get_all_tasks(projectId)
-        validatedTasks = []
-        projectUsers = []
-        for task in allProjectTasks:
+    def compile_validated_tasks_by_user(project_id: int):
+        all_project_tasks = Task.get_all_tasks(project_id)
+        validated_tasks = []
+        project_users = []
+        for task in all_project_tasks:
             if (task.task_status == TaskStatus.VALIDATED.value):
-                validatedTasks.append(task)
-                if (task.mapper.username in projectUsers):
+                validated_tasks.append(task)
+                if (task.mapper.username in project_users):
                     continue
                 else:
-                    projectUsers.append(task.mapper.username)
+                    project_users.append(task.mapper.username)
             else:
                 continue
 
         def mapper_username(task):
             return task.mapper.username
 
-        validatedTasks.sort(key=mapper_username)
+        validated_tasks.sort(key=mapper_username)
 
-        userDict = {}
-        for user in projectUsers:
-            userDict[user] = {}
+        user_dict = {}
+        for user in project_users:
+            user_dict[user] = {}
 
-        tasksAsTasksDict = {}
-        taskDict = {}
-        issueDict = {}
+        tasks_as_tasks_dict = {}
+        task_dict = {}
+        issue_dict = {}
         i = 0
-        currentUsername = None
-        for task in validatedTasks:
-            tasksAsTasksDict[task.id] = task
+        current_username = None
+        for task in validated_tasks:
+            tasks_as_tasks_dict[task.id] = task
             if (i == 0):
-                currentUsername = task.mapper.username
+                current_username = task.mapper.username
 
-            if (task.mapper.username != currentUsername):
-                userDict[currentUsername] = deepcopy(taskDict)
-                currentUsername = task.mapper.username
-                taskDict.clear()
+            if (task.mapper.username != current_username):
+                user_dict[current_username] = deepcopy(task_dict)
+                current_username = task.mapper.username
+                task_dict.clear()
 
-            issueDict.clear()
+            issue_dict.clear()
 
             for hist in task.task_history:
                 if (len(hist.task_mapping_issues) > 0):
                     for issue in hist.task_mapping_issues:
-                        issueDict[issue.issue] = issue.count
+                        issue_dict[issue.issue] = issue.count
 
-            if (len(issueDict.keys()) > 0):
-                taskDict[task.id] = deepcopy(issueDict)
+            if (len(issue_dict.keys()) > 0):
+                task_dict[task.id] = deepcopy(issue_dict)
             #*** Uncomment this else statement if rows with all zeros should be shown in detailed view ***
             #*** Comment to hide zero rows in detailed view ***
             else:
-                taskDict[task.id] = {}
+                task_dict[task.id] = {}
 
             i += 1
 
-        userDict[currentUsername] = taskDict
+        user_dict[current_username] = task_dict
 
-        return userDict, projectUsers, len(validatedTasks), tasksAsTasksDict
+        return user_dict, project_users, len(validated_tasks), tasks_as_tasks_dict
 
     @staticmethod
-    def build_issue_totals_table(userDict, projectUsers):
+    def build_issue_totals_table(user_dict, project_users):
         """ Get category names and create table of issue totals: mapped users -> arrayOfMappingIssueTotals """
         """ Mapping issue totals are sorted by mapping issue category_id """
         """ A row of totals is included at the bottom """
         categories_dto = MappingIssueCategoryService.get_all_mapping_issue_categories(True)
         categories = categories_dto.categories
 
-        categoryIndexDict = {}
-        categoryNamesDict = {}
-        maxCategoryIndex = 0
+        category_index_dict = {}
+        category_names_dict = {}
+        max_category_index = 0
         for category in categories:
-            categoryIndexDict[category.name] = category.category_id
-            categoryNamesDict[category.category_id] = category.name
-            if (category.category_id > maxCategoryIndex):
-                maxCategoryIndex = category.category_id
+            category_index_dict[category.name] = category.category_id
+            category_names_dict[category.category_id] = category.name
+            if (category.category_id > max_category_index):
+                max_category_index = category.category_id
 
-        numCategories = len(categoryIndexDict.keys())
-        numUsers = len(projectUsers)
+        data_table = {}
+        totals = np.zeros(max_category_index + 1, dtype='i')
+        for user in project_users:
+            data_table[user] = np.zeros(max_category_index + 1, dtype='i')
+            for task in user_dict[user]:
+                for issue in user_dict[user][task]:  #issue is the name of the issue
+                    category_index = category_index_dict[issue]
+                    issue_count = user_dict[user][task][issue]
+                    data_table[user][category_index] += issue_count
+                    totals[category_index] += issue_count
 
-        dataTable = {}
-        totals = np.zeros(maxCategoryIndex + 1, dtype='i')
-        for user in projectUsers:
-            dataTable[user] = np.zeros(maxCategoryIndex + 1, dtype='i')
-            for task in userDict[user]:
-                for issue in userDict[user][task]:  #issue is the name of the issue
-                    categoryIndex = categoryIndexDict[issue]
-                    issueCount = userDict[user][task][issue]
-                    dataTable[user][categoryIndex] += issueCount
-                    totals[categoryIndex] += issueCount
-
-        return dataTable, categoryIndexDict, categoryNamesDict, maxCategoryIndex, totals
+        return data_table, category_index_dict, category_names_dict, max_category_index, totals
 
