@@ -39,24 +39,6 @@
         };
 
         /**
-        * Returns all mapping issues as a CSV file
-        */
-        vm.getAllMappingIssues = function() {
-            var resultsPromise = mappingIssueService.getAllMappingIssues();
-            resultsPromise.then(function (data) {
-                //create file from csv string and download
-                var csv = 'data:text/csv;charset=utf-8,' + data;
-                var fileUri = encodeURI(csv);
-                var link = document.createElement('a');
-                link.setAttribute('href', fileUri);
-                link.setAttribute('download', 'mapping_issues.csv');
-                link.click();
-            }, function() {
-                // On error
-            });
-        }
-
-        /**
          * Create a new license
          */
         vm.createNewMappingIssueCategory = function(){
